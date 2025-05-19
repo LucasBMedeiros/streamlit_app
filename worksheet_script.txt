@@ -1,0 +1,100 @@
+
+
+-- when we create an app package, snowflake creates a database with the same name. This database is what we use to store all of our packaged snowflake objects  
+use database native_app_quickstart_package;
+
+
+create or replace schema native_app_quickstart_schema;
+use schema native_app_quickstart_schema;
+
+-- we will upload our project files here, directly into our app package 
+create or replace stage native_app_quickstart_stage
+    directory = ( enable = true )
+    comment = 'Stage for app project files'
+
+
+
+
+CREATE OR REPLACE WAREHOUSE NATIVE_APP_QUICKSTART_WH WAREHOUSE_SIZE=SMALL INITIALLY_SUSPENDED=TRUE;
+
+-- This database is used to store our test data
+CREATE OR REPLACE DATABASE NATIVE_APP_QUICKSTART_DB;
+USE DATABASE NATIVE_APP_QUICKSTART_DB;
+
+CREATE OR REPLACE SCHEMA NATIVE_APP_QUICKSTART_SCHEMA;
+USE SCHEMA NATIVE_APP_QUICKSTART_SCHEMA;
+
+CREATE OR REPLACE TABLE MFG_ORDERS (
+    order_id NUMBER(38,0),
+    material_name VARCHAR,
+    supplier_name VARCHAR,
+    quantity NUMBER(38,0),
+    cost FLOAT,
+    process_supply_day NUMBER(38,0)
+);
+
+-- Load app/data/orders_data.csv using Snowsight
+
+CREATE OR REPLACE TABLE MFG_SHIPPING (
+    order_id NUMBER(38,0),
+    ship_order_id NUMBER(38,0),
+    status VARCHAR(60),
+    lat FLOAT,
+    lon FLOAT,
+    duration NUMBER(38,0)
+);
+
+-- Load app/data/shipping_data.csv using Snowsight
+
+CREATE OR REPLACE TABLE MFG_SITE_RECOVERY (
+    event_id NUMBER(38,0),
+    recovery_weeks NUMBER(38,0),
+    lat FLOAT,
+    lon FLOAT
+);
+
+-- Load app/data/site_recovery_data.csv using Snowsight
+
+
+
+
+
+
+
+
+-- create shared_content_schema to share in the application package
+
+USE DATABASE NATIVE_APP_QUICKSTART_PACKAGE;
+CREATE OR REPLACE SCHEMA shared_content_schema;
+
+USE SCHEMA shared_content_schema;
+
+CREATE OR REPLACE VIEW MFG_SHIPPING AS SELECT * FROM NATIVE_APP_QUICKSTART_DB.NATIVE_APP_QUICKSTART_SCHEMA.MFG_SHIPPING;
+
+GRANT USAGE ON SCHEMA shared_content_schema TO SHARE IN APPLICATION PACKAGE NATIVE_APP_QUICKSTART_PACKAGE;
+
+GRANT REFERENCE_USAGE ON DATABASE NATIVE_APP_QUICKSTART_DB TO SHARE IN APPLICATION PACKAGE NATIVE_APP_QUICKSTART_PACKAGE;
+
+GRANT SELECT ON VIEW MFG_SHIPPING TO SHARE IN APPLICATION PACKAGE NATIVE_APP_QUICKSTART_PACKAGE;
+
+-- TEST APP LOCALLY
+
+USE DATABASE NATIVE_APP_QUICKSTART_DB;
+USE SCHEMA NATIVE_APP_QUICKSTART_SCHEMA;
+
+-- This executes 'setup.sql' linked in the manifest.yml
+-- This is also what gets executed when installing the app
+
+CREATE APPLICATION NATIVE_APP_QUICKSTART_APP5 FROM APPLICATION PACKAGE NATIVE_APP_QUICKSTART_PACKAGE USING VERSION V1 PATCH 4;
+
+-- For example, to create from another package:
+-- CREATE APPLICATION LEAD_TIME_OPTIMIZER_APP FROM APPLICATION PACKAGE LEAD_TIME_OPTIMIZER_PKG USING VERSION V1 PATCH 0;
+
+SHOW APPLICATION PACKAGES;
+
+
+
+
+
+
+

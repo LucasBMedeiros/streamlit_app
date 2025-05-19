@@ -9,12 +9,23 @@ from sys import exit
 st.set_page_config(layout="wide")
 session = get_active_session()
 
+try:
+    current_user = session.get_current_user()
+    current_account = session.get_current_account()
+
+    st.sidebar.markdown(f"👤 **User:** `{current_user}`")
+    st.sidebar.markdown(f"🏢 **Account:** `{current_account}`")
+except Exception as e:
+    st.sidebar.error(f"Could not retrieve user info: {e}")
+
 def load_app(orders_table,site_recovery_table):
     with st.spinner("Loading lead time, order status, and supplier performance. Please wait..."):
         df = session.sql(f"SELECT t1.order_id,t2.ship_order_id,t1.material_name,t1.supplier_name, t1.quantity, t1.cost, t2.status, t2.lat, t2.lon FROM {orders_table} as t1 INNER JOIN MFG_SHIPPING as t2 ON t2.ORDER_ID = t1.ORDER_ID ORDER BY t1.order_id")
+
         df_order_status = df.group_by('status').agg(count_distinct('order_id').as_('TOTAL RECORDS')).order_by('status').to_pandas()
 
         df_cal_lead_time = session.sql(f"SELECT t1.order_id,t2.ship_order_id,t1.material_name,t1.supplier_name,t1.quantity,t1.cost,t2.status,t2.lat,t2.lon,cal_lead_time(t1.process_supply_day,t2.duration,t2.recovery_days) as lead_time FROM {orders_table} as t1 INNER JOIN (SELECT order_id, ship_order_id, status, duration, MFG_SHIPPING.lat, MFG_SHIPPING.lon, IFF(srt.recovery_weeks * 7::int = srt.recovery_weeks * 7,srt.recovery_weeks * 7,0) as recovery_days from MFG_SHIPPING LEFT OUTER JOIN {site_recovery_table} as srt ON MFG_SHIPPING.lon = srt.lon AND MFG_SHIPPING.lat = srt.lat) as t2 ON t2.ORDER_ID = t1.ORDER_ID ORDER BY t1.order_id")
+
         df_supplier_perf = df_cal_lead_time.group_by('supplier_name').agg(sum(col('lead_time')).as_('TOTAL LEAD TIME')).sort('TOTAL LEAD TIME', ascending=True).limit(20).to_pandas()
         df_lead_time = df_cal_lead_time.select('order_id','lead_time').sort('order_id', ascending=True).to_pandas()
         
